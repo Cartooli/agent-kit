@@ -1,0 +1,6 @@
+{
+  "extraKnownMarketplaces": {
+    "kit": { "source": { "source": "github", "repo": "OWNER/agent-kit" } }
+  },
+  "enabledPlugins": { "kernel@kit": true }
+}

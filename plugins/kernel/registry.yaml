@@ -1,0 +1,16 @@
+# Everything that goes stale lives here, dated. session-start.sh warns when an entry passes its window.
+model_tiers:
+  value: { plan: opus, build: sonnet, mechanical: haiku }   # aliases resolve to the latest model; never pin versions here
+  source: "Claude Code sub-agent docs (model aliases)"
+  verified_on: "2026-11-10"
+  reverify_after_days: 60
+default_branches:
+  value: [main, master]
+  source: "portfolio convention"
+  verified_on: "2026-11-10"
+  reverify_after_days: 180
+protected_actions:
+  value: ["gh pr merge", "git push to default branch", "CLI production deploy"]
+  source: "owner standing rules"
+  verified_on: "2026-11-10"
+  reverify_after_days: 180

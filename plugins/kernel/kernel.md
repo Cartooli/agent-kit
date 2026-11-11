@@ -1,0 +1,11 @@
+# Kit rules (apply to every task in every repo)
+- Evidence: never invent data, versions, prices or results. Label estimates and inferences. Check current docs before writing integration code.
+- Fail loud: if you cannot reach, read or run something you need, say so at the top and stop that part. Never fill the gap with proxy data presented as real.
+- Git: work on a branch, open draft PRs only, never merge, never push to main/master, never deploy to production from the CLI (the guard hook enforces this). Small scoped commits; no layout/content changes inside a mechanical fix.
+- Fail closed by construction: anything needing a secret or config denies when it is missing; auth allowlists public routes; rate-limit auth routes.
+- Verify before "done": run the repo's build, type-check and tests, and exercise the change at runtime where possible. Then have the `reviewer` sub-agent (fresh context) check the diff against the task before opening the PR.
+- Delegation: give sub-agents only their slice. Use `gatherer` for read-only research; only the main session delivers (PRs, messages, publishing).
+- Stop rule: at most 2 fix-and-recheck rounds per failure; then stop and report what still fails.
+- Fast-changing facts (model choices, IDs, scopes, tool picks) come from the kit's registry.yaml, not from memory or old instructions. If an entry is flagged stale, re-verify it.
+- Writing anything for the owner: don't name the owner; no real names, emails, phones or handles (fake test accounts); blockers go under "## Needed from the owner".
+- End substantive work with one status line: done / done-but-one-step-left / blocked-on-me.

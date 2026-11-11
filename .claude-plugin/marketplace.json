@@ -1,0 +1,8 @@
+{
+  "name": "kit",
+  "owner": { "name": "portfolio-owner" },
+  "plugins": [
+    { "name": "kernel", "source": "./plugins/kernel",
+      "description": "Shared rules, guard hooks, scoped sub-agents and a dated registry for every Claude Code session." }
+  ]
+}
