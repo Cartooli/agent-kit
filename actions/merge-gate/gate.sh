@@ -43,11 +43,15 @@ if printf '%s' "$labels" | jq -e 'map(ascii_downcase) | index("hold") != null' >
 fi
 
 title_body=$(printf '%s\n%s' "$title" "$body")
-for phrase in 'do not merge' 'needs owner yes' 'owner-gated' 'gate:'; do
+for phrase in 'do not merge' 'needs owner yes' 'owner-gated'; do
   if printf '%s' "$title_body" | grep -qiF -- "$phrase"; then
     fail "The PR title or body contains '$phrase'. Clear that text once the owner says yes."
   fi
 done
+# "gate:" only as its own word, so "merge-gate:" or "Shared merge-gate: ..." doesn't trip it.
+if printf '%s' "$title_body" | grep -qiE '(^|[^[:alnum:]_-])gate:'; then
+  fail "The PR title or body contains 'gate:'. Clear that text once the owner says yes."
+fi
 
 if printf '%s' "$title" | grep -qiE '(^|[^[:alnum:]_])hold([^[:alnum:]_]|$)'; then
   fail "The PR title contains 'HOLD'. Edit the title once the owner says yes."

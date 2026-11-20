@@ -13,6 +13,9 @@ t clear "plain PR"                    "fix: typo" "## Before:${NL}x${NL}## After
 t block "hold label"                  "fix: typo" "" '["Hold"]'
 t block "do not merge in body"        "feat: x"   "Please DO NOT MERGE yet"
 t block "needs owner yes in title"    "Needs owner yes: price change" ""
+t block "gate: prefix in title"       "gate: pricing decision" ""
+t clear "merge-gate: in title"         "Shared merge-gate: block merges" ""
+t block "gate: mid-body"              "x" "Status is (gate: pending)"
 t block "HOLD title token"            "HOLD: pricing" ""
 t clear "hold inside a word"          "fix: household filter" ""
 t clear "hold in body sentence"       "fix: x" "we hold the lock briefly"
