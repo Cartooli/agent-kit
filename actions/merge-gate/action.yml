@@ -1,0 +1,33 @@
+name: merge-gate
+description: >-
+  Fails while a PR is held: a `hold` label, gate phrases in the title or body, an
+  unchecked "Before merge" box, or any open item under "Needed from the owner".
+  One shared copy for every repo; logic lives in gate.sh (tested by tests/test_merge_gate.sh).
+inputs:
+  github-token:
+    description: Token with pull-requests:read and issues:read on the calling repo.
+    required: false
+    default: ${{ github.token }}
+runs:
+  using: composite
+  steps:
+    - name: Read the PR and decide
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        REPO: ${{ github.repository }}
+        PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        GATE: ${{ github.action_path }}/gate.sh
+      run: |
+        set -euo pipefail
+        if [ -z "${PR_NUMBER:-}" ]; then
+          echo "::error::merge-gate runs on pull_request or PR issue_comment events only"; exit 1
+        fi
+        # Always read the PR fresh, so a comment event and a PR event judge the same text.
+        pr=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
+        export PR_TITLE PR_BODY PR_LABELS PR_COMMENTS
+        PR_TITLE=$(printf '%s' "$pr" | jq -r '.title // ""')
+        PR_BODY=$(printf '%s' "$pr" | jq -r '.body // ""')
+        PR_LABELS=$(printf '%s' "$pr" | jq -c '[.labels[].name]')
+        PR_COMMENTS=$(gh api --paginate "repos/$REPO/issues/$PR_NUMBER/comments" | jq -s -c 'add // [] | map(.body // "")')
+        bash "$GATE"
