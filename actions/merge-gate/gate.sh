@@ -6,7 +6,6 @@
 #   PR_TITLE     PR title
 #   PR_BODY      PR body (markdown)
 #   PR_LABELS    JSON array of label names, e.g. ["hold","docs"]
-#   PR_COMMENTS  JSON array of issue-comment bodies
 # Exit 0 = clear, 1 = blocked (reason on stderr as a GitHub ::error::), 3 = bad input.
 #
 # Blocks when:
@@ -17,8 +16,9 @@
 #   5. a "## Needed from the owner" section has anything other than ticked boxes ("- [x]")
 #      or a none-marker ("None", "Nothing", "N/A"). Fail closed: a plain bullet or a
 #      sentence there is an open owner item. Post-merge steps belong under "## After merge".
-# Clears 1-5 when an issue comment contains "merged by the owner" (kept for compatibility
-# with the per-repo gates this replaces).
+# There is no comment override: agents post from the same GitHub account as the owner,
+# so a comment can't prove who cleared the gate. The owner clears it by ticking boxes,
+# removing the label or editing the text.
 set -u
 
 command -v jq >/dev/null 2>&1 || { echo "::error::merge-gate needs jq" >&2; exit 3; }
@@ -26,15 +26,8 @@ command -v jq >/dev/null 2>&1 || { echo "::error::merge-gate needs jq" >&2; exit
 title=${PR_TITLE-}
 body=${PR_BODY-}
 labels=${PR_LABELS:-[]}
-comments=${PR_COMMENTS:-[]}
 
 printf '%s' "$labels" | jq -e 'type == "array"' >/dev/null 2>&1 || { echo "::error::PR_LABELS is not a JSON array" >&2; exit 3; }
-printf '%s' "$comments" | jq -e 'type == "array"' >/dev/null 2>&1 || { echo "::error::PR_COMMENTS is not a JSON array" >&2; exit 3; }
-
-if printf '%s' "$comments" | jq -e 'map((. // "") | ascii_downcase | test("merged by the owner")) | any' >/dev/null; then
-  echo "merge-gate: clear (a comment contains 'merged by the owner')"
-  exit 0
-fi
 
 fail() { echo "::error::$1" >&2; exit 1; }
 

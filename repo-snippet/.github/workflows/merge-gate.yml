@@ -7,25 +7,18 @@ name: merge-gate
 on:
   pull_request:
     types: [opened, edited, labeled, unlabeled, synchronize, reopened, ready_for_review]
-  issue_comment:
-    types: [created, edited]
 
 permissions:
   contents: read
   pull-requests: read
-  issues: read
 
 concurrency:
-  group: merge-gate-${{ github.event.pull_request.number || github.event.issue.number }}
+  group: merge-gate-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
   merge-gate:
     name: merge-gate
-    # Only PR comments carrying the override phrase can change the answer; skip the rest.
-    if: >-
-      github.event_name == 'pull_request' ||
-      (github.event.issue.pull_request && contains(github.event.comment.body, 'merged by the owner'))
     runs-on: ubuntu-slim
     timeout-minutes: 2
     steps:

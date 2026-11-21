@@ -5,7 +5,7 @@ description: >-
   One shared copy for every repo; logic lives in gate.sh (tested by tests/test_merge_gate.sh).
 inputs:
   github-token:
-    description: Token with pull-requests:read and issues:read on the calling repo.
+    description: Token with pull-requests:read on the calling repo.
     required: false
     default: ${{ github.token }}
 runs:
@@ -16,18 +16,17 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.github-token }}
         REPO: ${{ github.repository }}
-        PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
         GATE: ${{ github.action_path }}/gate.sh
       run: |
         set -euo pipefail
         if [ -z "${PR_NUMBER:-}" ]; then
-          echo "::error::merge-gate runs on pull_request or PR issue_comment events only"; exit 1
+          echo "::error::merge-gate runs on pull_request events only"; exit 1
         fi
-        # Always read the PR fresh, so a comment event and a PR event judge the same text.
+        # Read the PR fresh rather than trusting the event payload.
         pr=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
-        export PR_TITLE PR_BODY PR_LABELS PR_COMMENTS
+        export PR_TITLE PR_BODY PR_LABELS
         PR_TITLE=$(printf '%s' "$pr" | jq -r '.title // ""')
         PR_BODY=$(printf '%s' "$pr" | jq -r '.body // ""')
         PR_LABELS=$(printf '%s' "$pr" | jq -c '[.labels[].name]')
-        PR_COMMENTS=$(gh api --paginate "repos/$REPO/issues/$PR_NUMBER/comments" | jq -s -c 'add // [] | map(.body // "")')
         bash "$GATE"
