@@ -38,3 +38,9 @@
   - The guard is deliberately conservative: a command that merely *mentions* pushing to main is blocked too.
   - The guard checks the branch of the session's folder (or `git -C DIR`). `cd other-repo && git push` is judged by the session folder's branch; the server ruleset catches the rest.
   - Agents running with your own token can still merge PRs through the API from tools outside Claude Code. The guard covers sessions in Claude Code only.
+
+## Shared merge-gate and shipping snippets
+- `actions/merge-gate/` is one composite action for every repo's `merge-gate` check. It blocks a PR with the `hold` label, gate phrases (`do not merge`, `needs owner yes`, `owner-gated`, `gate:`, a `HOLD` title), an unchecked box under `## Before merge`, or any open item under `## Needed from the owner` (only ticked boxes or `None` clear it). Tests: `tests/test_merge_gate.sh`.
+- `repo-snippet/.github/workflows/merge-gate.yml` is the 30-line caller a repo keeps. Its job is still named `merge-gate`, so a ruleset that requires `merge-gate` keeps working when a repo swaps its own copy for the caller.
+- `repo-snippet/.github/pull_request_template.md` is the standard PR body (Before / After / How / How I verified / Needed from the owner / After merge).
+- `repo-snippet/SHIPPING.md` is the standard shipping section for a repo's `AGENTS.md`. Cloud sessions don't load the kit plugin, so the rules they need must be in the repo itself.
