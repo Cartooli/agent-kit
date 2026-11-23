@@ -17,3 +17,4 @@ jobs:
       - uses: actions/checkout@v7
       - run: bash tests/test_guard.sh
       - run: bash tests/test_merge_gate.sh
+      - run: bash tests/test_handoff.sh
