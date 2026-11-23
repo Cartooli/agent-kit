@@ -24,5 +24,5 @@ Updated: <YYYY-MM-DD HH:MM UTC>, before <the step about to run, or "stopping">
 
 ## DON'T
 <!-- Tried and failed, with the evidence. Never delete a line without the owner's go-ahead.
-     Seen on a second branch? Copy it to the root HANDOFF.md. -->
+     When this file is deleted (OPEN and NEXT empty), these lines move to the root HANDOFF.md. -->
 - <what was tried> fails: <error or result> (<date>)

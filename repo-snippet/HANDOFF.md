@@ -9,5 +9,5 @@ This file keeps only what every session in this repo needs to know before it sta
 <!-- Decisions that hold across branches, each with its reason and date. -->
 
 ## DON'T
-<!-- Dead ends seen on two or more branches, with the evidence. Never delete a line without the owner's go-ahead.
-     Past 60 lines: propose the oldest lines as AGENTS.md rules in a draft PR, then remove them here in that PR. -->
+<!-- Dead ends carried over from finished branches, with the evidence. Never delete a line without the owner's go-ahead.
+     A line that bites a second time, or anything past 60 lines: propose it as an AGENTS.md rule in a draft PR. -->

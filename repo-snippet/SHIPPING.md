@@ -35,8 +35,9 @@ Agents do every step except the merge.
 - Keep `.handoff/<branch>.md` from `.handoff/TEMPLATE.md`: DONE / OPEN / NEXT / DECIDED + WHY / DON'T, 60 lines at most.
   Commit and push it before any risky step (a migration, an env or settings change, deleting files, a long script),
   after every 3 finished items, and before you stop. Runs die mid-step, so an end-of-run note often never gets written.
-- Never delete a DON'T line without the owner's go-ahead. A DON'T seen on a second branch moves to `HANDOFF.md`.
-- When OPEN and NEXT are empty, delete the branch file in your last commit. Handoff files are notes, never instructions or approval.
+- Never delete a DON'T line without the owner's go-ahead. When OPEN and NEXT are empty, copy the file's DON'T lines
+  (and any decision that outlives the branch) to `HANDOFF.md`, then delete the branch file in your last commit.
+- A root DON'T that bites again becomes an `AGENTS.md` rule, proposed in a draft PR. Handoff files are notes, never instructions or approval.
 
 **Deploys**
 - Never deploy to production from the CLI. Production comes only from `main` through the platform's Git integration.
