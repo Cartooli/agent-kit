@@ -8,4 +8,5 @@
 - Stop rule: at most 2 fix-and-recheck rounds per failure; then stop and report what still fails.
 - Fast-changing facts (model choices, IDs, scopes, tool picks) come from the kit's registry.yaml, not from memory or old instructions. If an entry is flagged stale, re-verify it.
 - Writing anything for the owner: don't name the owner; no real names, emails, phones or handles (fake test accounts); blockers go under "## Needed from the owner".
+- Handoff: at start, read `HANDOFF.md` and `.handoff/<branch>.md` (if present) and restate the goal and next step; update and push the branch file before any risky step, after every 3 finished items and before stopping; never drop a DON'T line without the owner's go-ahead.
 - End substantive work with one status line: done / done-but-one-step-left / blocked-on-me.
