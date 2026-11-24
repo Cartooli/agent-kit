@@ -1,13 +1,17 @@
-<!-- agent-kit shipping section v2. Paste into the repo's AGENTS.md (and point CLAUDE.md at it).
+<!-- agent-kit shipping section v3. Paste into the repo's AGENTS.md (and point CLAUDE.md at it).
      Cloud sessions don't load the kit plugin, so these rules have to live in the repo. -->
 ## Shipping (how a change gets to production)
 
-The path is: branch → draft PR → CI green and merge-gate clear → the owner merges → the platform deploys `main`.
-Agents do every step except the merge.
+The path is: branch → draft PR → CI green and merge-gate clear → squash-merge → the platform deploys `main`.
 
 **Pull requests**
 - Branch from `main`, one concern per branch, small scoped commits. Never push to `main`.
-- Open PRs as **drafts**. Never merge, never mark ready, never approve, never enable auto-merge, never use `--admin`.
+- Open PRs as **drafts**. Merge rule: once CI and merge-gate are green, mark your own PR ready and squash-merge it.
+  Never approve, never enable auto-merge, never use `--admin`, never a merge or rebase commit.
+- A PR that touches payments/Stripe, sign-in/auth, kids' data/COPPA, database migrations, secrets/env, or deletes data
+  adds `- [ ] Owner go-ahead to merge (touches <kind>)` under `## Needed from the owner` and is merged only after the
+  owner's go-ahead naming that PR. Never tick that box yourself.
+- A revert or prod error from an agent merge goes in the weekly ledger; if reverts climb, this rule tightens.
 - Fill in `.github/pull_request_template.md`: Before / After / How / How I verified / Needed from the owner / After merge.
 - Anything the owner must do before merge goes under `## Needed from the owner`, one `- [ ]` box per item
   (a decision, an env var, a setting). merge-gate stays red until every box is ticked or the section says `None`.

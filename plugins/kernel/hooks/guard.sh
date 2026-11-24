@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Blocks: merging PRs, pushing to the default branch, force-pushing it, and production deploys from the CLI.
+# Blocks: PR merges other than squash (and --admin/--auto), pushing to the default branch, force-pushing it, and production deploys from the CLI.
 # Override (owner only): start Claude Code with KIT_OVERRIDE=1 in your own shell. Agents cannot set it.
 [ "${KIT_OVERRIDE:-}" = "1" ] && exit 0
 input=$(cat)
@@ -13,15 +13,21 @@ else
   echo "kit guard: neither jq nor python3 found; guard inactive (server-side branch rules still apply)" >&2; exit 0
 fi
 [ -z "$cmd" ] && exit 0
-block(){ echo "Blocked by kit guard: $1. Open a draft PR instead and list it under '## Needed from the owner'." >&2; exit 2; }
+block(){ echo "Blocked by kit guard: $1. See the kit merge rule; anything the owner must do goes under '## Needed from the owner'." >&2; exit 2; }
 # normalise: one line, squeeze spaces
 c=$(printf '%s' "$cmd" | tr '\n' ' ' | tr -s ' ')
 # remember `git -C DIR` for the branch lookup, then drop git/gh global options so `git -c k=v push` and `gh -R o/r pr merge` are still seen
 gitdir=$(printf '%s' "$c" | grep -Eo '(^|[;&|( ])git +-C +[^ ;&|]+' | head -1 | sed -E 's/.*-C +//')
 c=$(printf '%s' "$c" | sed -E 's/(^|[;&|( ])git(( +-[Cc] +[^ ;&|]+)|( +--[a-z-]+(=[^ ;&|]+)?))+ +push/\1git push/g; s/(^|[;&|( ])gh(( +-R +[^ ;&|]+)|( +--repo[ =][^ ;&|]+))+ +pr/\1gh pr/g')
-# 1) merging PRs
-printf '%s' "$c" | grep -Eq '(^|[;&|( ])gh +pr +merge( |$)' && block "agents never merge PRs"
-printf '%s' "$c" | grep -Eq 'gh +api .*pulls/[0-9]+/merge' && block "agents never merge PRs"
+# 1) merging PRs: squash only; never --admin, --auto, merge or rebase commits
+if printf '%s' "$c" | grep -Eq '(^|[;&|( ])gh +pr +merge( |$)'; then
+  mpart=$(printf '%s' "$c" | grep -Eo 'gh +pr +merge[^;&|]*' | head -1)
+  printf '%s' "$mpart" | grep -Eq -- '(^| )--(admin|auto|merge|rebase)( |=|$)|(^| )-[a-zA-Z]*[mr][a-zA-Z]*( |$)' && block "agents squash-merge only (no --admin, --auto, merge or rebase commits)"
+  printf '%s' "$mpart" | grep -Eq -- '(^| )(--squash|-[a-zA-Z]*s[a-zA-Z]*)( |$)' || block "agents merge with --squash only"
+fi
+if printf '%s' "$c" | grep -Eq 'gh +api .*pulls/[0-9]+/merge'; then
+  printf '%s' "$c" | grep -Eq 'merge_method[=:" ]+squash' || block "agents squash-merge only (pass merge_method=squash)"
+fi
 # 2) production deploys from the CLI
 printf '%s' "$c" | grep -Eq '(^|[;&|( ])(npx +)?vercel( +deploy)?( +[^;&|]*)?--prod' && block "production deploys go through a merged PR, not the CLI"
 # 3) pushes that target main/master (explicit refspec)

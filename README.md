@@ -4,9 +4,9 @@
 
 | Layer | Enforces | How it stays current |
 |---|---|---|
-| `plugins/kernel/kernel.md` (injected at session start) | Shared rules: evidence, fail loud, draft PRs, verify, stop rule, owner-writing rules | Edit it once in this repo; plugin auto-update pulls it (see setup step 2) |
-| `plugins/kernel/hooks/guard.sh` | Blocks PR merges, pushes to main/master (including `HEAD`/`@` and git/gh global options), mirror pushes, CLI prod deploys | Same; tested by `tests/test_guard.sh` |
-| `plugins/kernel/agents/*` | `gatherer` (read-only, can't deliver), `reviewer` (fresh-context check before every PR), `fixer` (draft PRs only) | Same; models are aliases, never pinned versions |
+| `plugins/kernel/kernel.md` (injected at session start) | Shared rules: evidence, fail loud, draft PRs and the merge rule, verify, stop rule, owner-writing rules | Edit it once in this repo; plugin auto-update pulls it (see setup step 2) |
+| `plugins/kernel/hooks/guard.sh` | Allows only squash merges (no `--admin`, `--auto`, merge or rebase commits); blocks pushes to main/master (including `HEAD`/`@` and git/gh global options), mirror pushes, CLI prod deploys | Same; tested by `tests/test_guard.sh` |
+| `plugins/kernel/agents/*` | `gatherer` (read-only, can't deliver), `reviewer` (fresh-context check before every PR), `fixer` (opens draft PRs, never merges) | Same; models are aliases, never pinned versions |
 | `plugins/kernel/registry.yaml` | Every fast-changing fact, dated | Every session warns when an entry is past its re-verify window |
 | `server/` ruleset | No direct push, force-push or deletion on default branches, at the code host | Organization: one org ruleset covers future repos. Personal account: re-run the script after creating repos |
 | Ratchet `rules/kit-installed.yaml` | Adds the kit snippet (`repo-snippet/`) to every repo's `.claude/settings.json` | Rule Ratchet waves, as draft PRs |
@@ -25,9 +25,9 @@
 ## After that
 - **To change a rule:** edit the file here and push. Sessions on installed machines pick it up through plugin auto-update.
 - **Overrides:** you are the only one who can override. Start a session with `KIT_OVERRIDE=1 claude` to switch the guard hook off, or merge your own PR on the server side. Agents can set neither.
-  - To let a session merge a PR you have reviewed (for example with a merge skill), start it with `KIT_OVERRIDE=1 claude`. The server ruleset still requires a PR for every change.
+  - Agents squash-merge their own green PRs under the merge rule in `kernel.md`. PRs touching payments, auth, kids' data, migrations, secrets/env or deletes wait on a `## Needed from the owner` box. The server ruleset still requires a PR for every change.
 - **What still reaches you, by design:**
-  - draft PRs waiting for your merge;
+  - PRs waiting on your go-ahead (the risky kinds in the merge rule);
   - "REGISTRY STALE" lines at session start;
   - a red Rule Ratchet run.
 
@@ -37,7 +37,7 @@
   - The guard needs `jq` or `python3`. Without either it stands down, with a warning, and the server ruleset still holds.
   - The guard is deliberately conservative: a command that merely *mentions* pushing to main is blocked too.
   - The guard checks the branch of the session's folder (or `git -C DIR`). `cd other-repo && git push` is judged by the session folder's branch; the server ruleset catches the rest.
-  - Agents running with your own token can still merge PRs through the API from tools outside Claude Code. The guard covers sessions in Claude Code only.
+  - Agents running with your own token can still merge PRs through the API from tools outside Claude Code. The guard covers sessions in Claude Code only, and it checks the merge method, not what the PR touches: the risky-kinds part of the merge rule is held by the merge-gate box.
 
 ## Shared merge-gate and shipping snippets
 - `actions/merge-gate/` is one composite action for every repo's `merge-gate` check. It blocks a PR with the `hold` label, gate phrases (`do not merge`, `needs owner yes`, `owner-gated`, `gate:`, a `HOLD` title), an unchecked box under `## Before merge`, or any open item under `## Needed from the owner` (only ticked boxes or `None` clear it). Tests: `tests/test_merge_gate.sh`.

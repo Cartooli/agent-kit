@@ -9,9 +9,16 @@ t(){ want=$1; dir=$2; shift 2; cmd="$*"
   printf '%s' "$json" | "$G" >/dev/null 2>&1; rc=$?
   got=$([ $rc -eq 2 ] && echo block || echo allow)
   [ "$got" = "$want" ] && echo "ok   $want  $cmd" || { echo "FAIL want=$want got=$got  $cmd"; fail=1; }; }
-t block $fb gh pr merge 12 --squash
+t allow $fb gh pr merge 12 --squash
+t allow $fb gh pr merge 12 -s -d
+t block $fb gh pr merge 12
+t block $fb gh pr merge 12 --merge
+t block $fb gh pr merge 12 -r
+t block $fb gh pr merge 12 --squash --admin
+t block $fb gh pr merge --auto --squash 5
 t block $fb 'cd repo && gh pr merge --auto 5'
 t block $fb gh api -X PUT repos/o/r/pulls/7/merge
+t allow $fb gh api -X PUT repos/o/r/pulls/7/merge -f merge_method=squash
 t block $fb git push origin main
 t block $fb git push origin HEAD:main
 t block $fb git push -f origin master
@@ -37,6 +44,7 @@ t block $fb "git -C $tmp push"
 t block $fb gh -R o/r pr merge 5
 t block $fb gh --repo o/r pr merge 5
 t block $fb gh --repo=o/r pr merge 5
+t allow $fb gh -R o/r pr merge 5 --squash
 t allow $tmp git push origin HEAD:feat/x
 t allow $fb git push origin HEAD
 t allow $tmp "git -C $fb push"
