@@ -10,7 +10,7 @@ default_branches:
   verified_on: "2026-11-10"
   reverify_after_days: 180
 protected_actions:
-  value: ["gh pr merge", "git push to default branch", "CLI production deploy"]
-  source: "owner standing rules"
-  verified_on: "2026-11-10"
+  value: ["PR merge other than squash (no --admin, --auto, merge or rebase commits)", "git push to default branch", "CLI production deploy"]
+  source: "owner standing rules (merge rule updated 2026-11-24)"
+  verified_on: "2026-11-24"
   reverify_after_days: 180
