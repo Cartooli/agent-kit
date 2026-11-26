@@ -1,2 +1,2 @@
-{ "name": "kernel", "version": "1.0.0",
+{ "name": "kernel", "version": "1.1.0",
   "description": "Shared rules, guard hooks, scoped sub-agents and a dated registry." }

@@ -4,7 +4,7 @@
 
 | Layer | Enforces | How it stays current |
 |---|---|---|
-| `plugins/kernel/kernel.md` (injected at session start) | Shared rules: evidence, fail loud, draft PRs and the merge rule, verify, stop rule, owner-writing rules | Edit it once in this repo; plugin auto-update pulls it (see setup step 2) |
+| `plugins/kernel/kernel.md` (injected at session start) | Shared rules: evidence, fail loud, draft PRs and the merge rule, canary-first sweeps, verify, stop rule, owner-writing rules | Edit it once in this repo and bump the plugin `version`; plugin auto-update pulls it (see setup step 2) |
 | `plugins/kernel/hooks/guard.sh` | Allows only squash merges (no `--admin`, `--auto`, merge or rebase commits); blocks pushes to main/master (including `HEAD`/`@` and git/gh global options), mirror pushes, CLI prod deploys | Same; tested by `tests/test_guard.sh` |
 | `plugins/kernel/agents/*` | `gatherer` (read-only, can't deliver), `reviewer` (fresh-context check before every PR), `fixer` (opens draft PRs, never merges) | Same; models are aliases, never pinned versions |
 | `plugins/kernel/registry.yaml` | Every fast-changing fact, dated | Every session warns when an entry is past its re-verify window |
@@ -23,7 +23,7 @@
    - Personal account: a ruleset on each non-archived repo you own. Private repos on a free plan may be refused; each refusal is printed as `FAILED repo: reason`, and the script exits non-zero.
 
 ## After that
-- **To change a rule:** edit the file here and push. Sessions on installed machines pick it up through plugin auto-update.
+- **To change a rule:** edit the file here, bump `version` in `plugins/kernel/.claude-plugin/plugin.json` in the same PR, and push. Sessions on installed machines pick it up through plugin auto-update; without the bump they keep their cached copy (`tests/test_version.sh` fails a PR that changes the plugin without one).
 - **Overrides:** you are the only one who can override. Start a session with `KIT_OVERRIDE=1 claude` to switch the guard hook off, or merge your own PR on the server side. Agents can set neither.
   - Agents squash-merge their own green PRs under the merge rule in `kernel.md`. PRs touching payments, auth, kids' data, migrations, secrets/env or deletes wait on a `## Needed from the owner` box. The server ruleset still requires a PR for every change.
 - **What still reaches you, by design:**
