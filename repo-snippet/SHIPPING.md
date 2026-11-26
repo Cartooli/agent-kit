@@ -1,4 +1,4 @@
-<!-- agent-kit shipping section v3. Paste into the repo's AGENTS.md (and point CLAUDE.md at it).
+<!-- agent-kit shipping section v4. Paste into the repo's AGENTS.md (and point CLAUDE.md at it).
      Cloud sessions don't load the kit plugin, so these rules have to live in the repo. -->
 ## Shipping (how a change gets to production)
 
@@ -32,6 +32,14 @@ The path is: branch → draft PR → CI green and merge-gate clear → squash-me
 - Anything that needs a secret or config denies when it's missing. Auth allowlists public routes; never the reverse.
 - Rate-limit auth routes per IP.
 - Internal docs (`*.md`, `docs/`, `.claude/`, audits) are never served by the deployed site.
+
+**Sweeps (one change bound for many repos)**
+- Land it on one canary repo first. Merge it there and check it live (the deployed site, or green CI on `main` where
+  nothing deploys) before any other repo gets it. Each fan-out PR links the canary PR.
+- A sweep against a fixed outside target (a security advisory, a vendor deprecation) may go out at once.
+  A sweep against a decision still being made (wording, naming, a policy) waits until that decision is frozen,
+  or every live repo pays for the change twice.
+- If the canary needs a fix, change the plan and re-run the canary; don't patch the fix into the fan-out.
 
 **Handoffs (so the next session doesn't repeat your work)**
 - At the start, read `HANDOFF.md` and `.handoff/<branch>.md` if it exists (slashes in the branch name become dashes).
