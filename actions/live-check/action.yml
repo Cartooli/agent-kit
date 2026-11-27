@@ -43,7 +43,7 @@ runs:
         RUN_ID: ${{ github.run_id }}
         PROBE: ${{ github.action_path }}/probe.sh
       run: |
-        set -uo pipefail
+        set +e -uo pipefail  # the composite shell runs with -e; failures are handled below
         out="$RUNNER_TEMP/live-check.txt"
         if [ "$DRILL" != "none" ]; then
           export EXTRA_CHECK="{\"path\":\"/__live-check-drill-$RUN_ID\",\"status\":200}"
@@ -84,7 +84,7 @@ runs:
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         DIR: ${{ github.action_path }}
       run: |
-        set -uo pipefail
+        set +e -uo pipefail  # the composite shell runs with -e; failures are handled below
         export TIP_SHA PARENTS SUBJECT FILES PR_JSON PRIOR PR_NUMBER PR_TITLE PR_LABELS
         TIP_SHA=$(gh api "repos/$REPO/commits/$DEFAULT_BRANCH" --jq .sha 2>/dev/null || echo unknown)
         commit=$(gh api "repos/$REPO/commits/$SHA" 2>/dev/null || echo '{}')
