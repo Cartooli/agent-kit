@@ -1,0 +1,42 @@
+# live-check caller. The logic lives once in agent-kit (actions/live-check); this file only
+# says when to run it. Add it with a .livecheck.json at the repo root (see
+# repo-snippet/.livecheck.json) and nothing else: no secret, no Vercel token.
+# Replace OWNER and pin REF to a commit SHA of agent-kit's main branch.
+#
+# Vercel's Git integration reports each deploy to GitHub as a deployment; this runs on the
+# Production one only. A healthy deploy costs about 20 seconds of a slim runner.
+name: live-check
+
+on:
+  deployment_status:
+  workflow_dispatch:
+    inputs:
+      drill:
+        description: "Drill the failure path: revert (opens and closes a revert PR) or issue"
+        type: choice
+        options: [revert, issue]
+        default: revert
+
+permissions:
+  contents: write        # push the revert branch
+  pull-requests: write   # open and squash-merge the revert PR
+  issues: write          # open the failure issue, create labels
+  actions: read          # read the previous live-check result
+
+jobs:
+  live-check:
+    name: live-check
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.deployment_status.state == 'success' &&
+       startsWith(github.event.deployment.environment, 'Production'))
+    # Job-level, so preview events (skipped by the `if`) never displace a queued production run.
+    concurrency:
+      group: live-check-${{ github.repository }}
+      cancel-in-progress: false
+    runs-on: ubuntu-slim
+    timeout-minutes: 6
+    steps:
+      - uses: OWNER/agent-kit/actions/live-check@REF
+        with:
+          drill: ${{ inputs.drill || 'none' }}

@@ -1,0 +1,116 @@
+name: live-check
+description: >-
+  After a production deploy, requests a few paths on the live site (from the repo's
+  .livecheck.json). A healthy deploy finishes in about 20 seconds. A failure is re-checked
+  twice over about 2.5 minutes; if it holds, an agent squash-merge that was not gated as
+  sensitive is reverted (PR labelled auto-revert, squash-merged), and anything else opens one
+  issue labelled live-check-failed. Needs no secret: the workflow token does everything.
+  Logic: probe.sh (requests), decide.sh (revert or issue), act.sh (does it).
+  Tests: tests/test_live_check.sh.
+inputs:
+  github-token:
+    description: Token with contents, pull-requests and issues write, and actions read, on the calling repo.
+    required: false
+    default: ${{ github.token }}
+  config:
+    description: Path of the config file in the repo.
+    required: false
+    default: .livecheck.json
+  drill:
+    description: >-
+      none (normal run), revert or issue. A drill adds a check that must fail, skips the
+      re-checks, and opens then closes a revert PR (never merged) or an issue, labelled
+      live-check-drill so it isn't counted as a real failure.
+    required: false
+    default: none
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@v7
+      with:
+        ref: ${{ github.event.deployment.sha || github.sha }}
+        fetch-depth: 1
+        sparse-checkout: ${{ inputs.config }}
+        sparse-checkout-cone-mode: false
+        token: ${{ inputs.github-token }}
+
+    - name: Check the live site
+      id: probe
+      shell: bash
+      env:
+        CONFIG: ${{ inputs.config }}
+        DRILL: ${{ inputs.drill }}
+        RUN_ID: ${{ github.run_id }}
+        PROBE: ${{ github.action_path }}/probe.sh
+      run: |
+        set -uo pipefail
+        out="$RUNNER_TEMP/live-check.txt"
+        if [ "$DRILL" != "none" ]; then
+          export EXTRA_CHECK="{\"path\":\"/__live-check-drill-$RUN_ID\",\"status\":200}"
+          waits="0"
+        else
+          settle=$(jq -r '.settle_seconds // 15' "$CONFIG" 2>/dev/null || echo 15)
+          retry=$(jq -r '.retry_seconds // 75' "$CONFIG" 2>/dev/null || echo 75)
+          waits="$settle $retry $retry"
+        fi
+        rc=1
+        for w in $waits; do
+          sleep "$w"
+          bash "$PROBE" >"$out"; rc=$?
+          cat "$out"
+          [ "$rc" -eq 1 ] || break
+          echo "--- failed; re-checking"
+        done
+        if [ "$rc" -eq 3 ]; then echo "::error::live-check config is missing or invalid"; exit 1; fi
+        if [ "$rc" -eq 0 ]; then
+          echo "failed=false" >> "$GITHUB_OUTPUT"
+          echo "live-check | ${{ github.repository }} | ${GITHUB_SHA:0:7} | PASS | | $(grep -c '^ok' "$out") checks" | tee -a "$GITHUB_STEP_SUMMARY"
+        else
+          echo "failed=true" >> "$GITHUB_OUTPUT"
+          { echo 'failures<<LIVECHECK_EOF'; grep '^FAIL' "$out"; echo 'LIVECHECK_EOF'; } >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Decide and act
+      if: steps.probe.outputs.failed == 'true'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        REPO: ${{ github.repository }}
+        SHA: ${{ github.event.deployment.sha || github.sha }}
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        DRILL: ${{ inputs.drill }}
+        FAILURES: ${{ steps.probe.outputs.failures }}
+        RUN_ID: ${{ github.run_id }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        DIR: ${{ github.action_path }}
+      run: |
+        set -uo pipefail
+        export TIP_SHA PARENTS SUBJECT FILES PR_JSON PRIOR PR_NUMBER PR_TITLE PR_LABELS
+        TIP_SHA=$(gh api "repos/$REPO/commits/$DEFAULT_BRANCH" --jq .sha 2>/dev/null || echo unknown)
+        commit=$(gh api "repos/$REPO/commits/$SHA" 2>/dev/null || echo '{}')
+        PARENTS=$(jq -r '.parents | length' <<<"$commit" 2>/dev/null || echo 0)
+        SUBJECT=$(jq -r '.commit.message // "" | split("\n")[0]' <<<"$commit")
+        FILES=$(jq -r '.files[]?.filename' <<<"$commit")
+        PR_JSON=$(gh api "repos/$REPO/commits/$SHA/pulls" 2>/dev/null \
+          | jq -c --arg s "$SHA" '[.[] | select(.merged_at != null and .merge_commit_sha == $s)] | first
+              | if . == null then empty else {number, title, merge_commit_sha, labels: [.labels[].name]} end' 2>/dev/null || true)
+        pj=${PR_JSON:-}; [ -n "$pj" ] || pj='{}'
+        PR_NUMBER=$(jq -r '.number // ""' <<<"$pj")
+        PR_TITLE=$(jq -r '.title // ""' <<<"$pj")
+        PR_LABELS=$(jq -c '.labels // []' <<<"$pj")
+        if [ "$DRILL" != "none" ]; then
+          PRIOR=success
+        else
+          wf=$(basename "${GITHUB_WORKFLOW_REF%%@*}")
+          PRIOR=$(gh api "repos/$REPO/actions/workflows/$wf/runs?status=completed&event=deployment_status&per_page=100" 2>/dev/null \
+            | jq -r --argjson me "$RUN_ID" '[.workflow_runs[] | select(.id != $me and (.conclusion == "success" or .conclusion == "failure"))] | first | .conclusion // "none"' 2>/dev/null || echo none)
+        fi
+        if [ "$DRILL" = "issue" ]; then decision="issue drill of the issue path"
+        else decision=$(bash "$DIR/decide.sh"); fi
+        echo "decision: $decision (prior: $PRIOR, tip: ${TIP_SHA:0:7}, PR: ${PR_NUMBER:-none})"
+        export ACTION=${decision%% *} REASON=${decision#* }
+        bash "$DIR/act.sh"
+        act_rc=$?
+        # A real failure keeps the run red so the next run's "previous check" sees it.
+        if [ "$DRILL" = "none" ]; then exit 1; fi
+        exit $act_rc
