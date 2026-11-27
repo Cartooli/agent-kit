@@ -31,6 +31,8 @@ failures_md=$(printf '%s\n' "${FAILURES:-}" | sed 's/^/    /')
 open_issue() {
   local why=$1 label=live-check-failed n title body
   [ "$drill" = "none" ] || label=live-check-drill
+  # A failure caused by a drill PR stays countable apart from real ones.
+  if jq -e 'map(ascii_downcase) | index("live-check-drill") != null' <<<"${PR_LABELS:-[]}" >/dev/null 2>&1; then label=live-check-drill; fi
   ensure_label "$label" "b60205" "Live check failed after a production deploy"
   body=$(printf 'The live check failed after the production deploy of %s and did not revert it automatically.\n\n**Why no auto-revert:** %s\n\n**Failed checks:**\n\n%s\n\nRun: %s\n' "$SHA" "$why" "$failures_md" "$RUN_URL")
   if [ "$drill" = "none" ]; then

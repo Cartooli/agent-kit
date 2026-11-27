@@ -107,4 +107,7 @@ a "drill issue closes"                 'drill issue #5 \(opened, closed\)'      
 a "revert of a drill PR keeps the drill label" 'reverted #12 via #77'           revert PR_LABELS='["live-check-drill"]'
 grep -q 'labels\[\]=live-check-drill' "$T/calls" && ok "act  drill-PR revert labelled live-check-drill" || bad "act  drill-PR revert labelled live-check-drill"
 
+a "drill PR failure files a drill issue" 'issue #5 \| test reason'              issue PR_LABELS='["live-check-drill"]'
+grep -q 'labels\[\]=live-check-drill' "$T/calls" && ok "act  drill-PR issue labelled live-check-drill" || bad "act  drill-PR issue labelled live-check-drill"
+
 exit $fail

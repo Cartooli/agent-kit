@@ -58,4 +58,6 @@
 
 **For the weekly ledger:** each run writes one line to its job summary (`live-check | repo | sha | PASS/FAIL | action | reason`). Count real reverts with `is:pr label:auto-revert` and failures with `label:live-check-failed`. Drills carry `live-check-drill` instead, and so does the revert of a PR labelled `live-check-drill`.
 
-**Limits:** the check only sees HTTP status and page text, not runtime errors in logs. The repo setting "Allow GitHub Actions to create and approve pull requests" must be on, or every revert falls back to an issue (the drill shows which). Tests: `tests/test_live_check.sh`.
+**One org setting:** the automatic revert needs "Allow GitHub Actions to create and approve pull requests" switched on (organization Settings > Actions > General > Workflow permissions). While it is off, each revert stops at opening its PR and falls back to the issue, which names the setting. A `drill: revert` run shows which state the org is in.
+
+**Limits:** the check sees only HTTP status and page text, not runtime errors in logs. Tests: `tests/test_live_check.sh`.
