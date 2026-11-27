@@ -3,12 +3,16 @@
 # repo-snippet/.livecheck.json) and nothing else: no secret, no Vercel token.
 # Replace OWNER and pin REF to a commit SHA of agent-kit's main branch.
 #
-# Vercel's Git integration reports each deploy to GitHub as a deployment; this runs on the
-# Production one only. A healthy deploy costs about 20 seconds of a slim runner.
+# Vercel's Git integration posts a commit status ("Vercel", or "Vercel – <project>" when
+# several projects build one repo) on every deploy. Newer Vercel projects post only that, not a
+# GitHub deployment, so this runs on the status. It counts a success on a commit of the default
+# branch as the production deploy. A healthy deploy costs about 20 seconds of a slim runner.
+# If several Vercel projects build this repo, replace the context test in `if:` with the exact
+# context of the project that serves base_url, e.g. github.event.context == 'Vercel – my-app'.
 name: live-check
 
 on:
-  deployment_status:
+  status:
   workflow_dispatch:
     inputs:
       drill:
@@ -28,9 +32,11 @@ jobs:
     name: live-check
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event.deployment_status.state == 'success' &&
-       startsWith(github.event.deployment.environment, 'Production'))
-    # Job-level, so preview events (skipped by the `if`) never displace a queued production run.
+      (github.event.state == 'success' &&
+       (github.event.context == 'Vercel' || startsWith(github.event.context, 'Vercel – ')) &&
+       contains(github.event.branches.*.name, github.event.repository.default_branch))
+    # Job-level, so preview and other status events (skipped by the `if`) never displace a
+    # queued production run.
     concurrency:
       group: live-check-${{ github.repository }}
       cancel-in-progress: false

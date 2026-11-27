@@ -110,4 +110,24 @@ grep -q 'labels\[\]=live-check-drill' "$T/calls" && ok "act  drill-PR revert lab
 a "drill PR failure files a drill issue" 'issue #5 \| test reason'              issue PR_LABELS='["live-check-drill"]'
 grep -q 'labels\[\]=live-check-drill' "$T/calls" && ok "act  drill-PR issue labelled live-check-drill" || bad "act  drill-PR issue labelled live-check-drill"
 
+# ---------- prior.jq (the previous production check) ----------
+pr() { # pr WANT NAME RUNS_JSON
+  got=$(printf '{"workflow_runs":%s}' "$3" | jq -r --argjson me 9 -f "$D/prior.jq")
+  [ "$got" = "$1" ] && ok "prior $1  $2" || bad "prior want=$1 got=$got  $2"; }
+pr success "status-triggered pass counts"     '[{"id":8,"event":"status","conclusion":"success"}]'
+pr failure "deployment_status failure counts" '[{"id":8,"event":"deployment_status","conclusion":"failure"}]'
+pr failure "drills and skips ignored"         '[{"id":8,"event":"workflow_dispatch","conclusion":"success"},{"id":7,"event":"status","conclusion":"skipped"},{"id":6,"event":"status","conclusion":"failure"}]'
+pr success "own run ignored"                  '[{"id":9,"event":"status","conclusion":"failure"},{"id":5,"event":"status","conclusion":"success"}]'
+pr none    "nothing before"                   '[{"id":4,"event":"workflow_dispatch","conclusion":"success"}]'
+
+# ---------- trigger wiring (newer Vercel projects post only a commit status) ----------
+W="$D/../../repo-snippet/.github/workflows/live-check.yml"
+grep -qE '^  status:' "$W" && ok "snippet runs on commit status" || bad "snippet runs on commit status"
+grep -q "contains(github.event.branches.\*.name, github.event.repository.default_branch)" "$W" \
+  && ok "snippet: status must be on the default branch" || bad "snippet: status must be on the default branch"
+grep -q "github.event.context == 'Vercel'" "$W" && ok "snippet: only Vercel statuses" || bad "snippet: only Vercel statuses"
+n=$(grep -c 'github.event.deployment.sha || github.event.sha || github.event.client_payload.git.sha || github.sha' "$D/action.yml")
+[ "$n" -ge 3 ] && ok "action: deployed sha from deployment, status or dispatch" || bad "action: deployed sha (found $n)"
+grep -q 'event=deployment_status' "$D/action.yml" && bad "action: prior check not tied to one trigger" || ok "action: prior check not tied to one trigger"
+
 exit $fail
