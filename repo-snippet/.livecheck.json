@@ -1,0 +1,9 @@
+{
+  "base_url": "https://www.example.com",
+  "checks": [
+    { "path": "/", "status": 200, "contains": "Example" },
+    { "path": "/pricing", "status": 200 },
+    { "path": "/workspace", "status": [302, 303, 307, 308] },
+    { "path": "/api/models", "status": 401 }
+  ]
+}

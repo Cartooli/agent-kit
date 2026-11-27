@@ -45,3 +45,17 @@
 - `repo-snippet/.github/pull_request_template.md` is the standard PR body (Before / After / How / How I verified / Needed from the owner / After merge).
 - `repo-snippet/SHIPPING.md` is the standard shipping section for a repo's `AGENTS.md`. Cloud sessions don't load the kit plugin, so the rules they need must be in the repo itself.
 - `repo-snippet/HANDOFF.md` and `repo-snippet/.handoff/TEMPLATE.md` are the handoff files. Each branch keeps its own `.handoff/<branch>.md` (DONE / OPEN / NEXT / DECIDED + WHY / DON'T), so parallel PRs never conflict on it. The root `HANDOFF.md` keeps only the decisions and dead ends that outlive a branch. Both cap at 60 lines. When a branch finishes, its DON'T lines move to the root file; a root line that bites again (or overflows the cap) becomes an `AGENTS.md` rule in a draft PR. That's the ratchet, applied to handoffs. Tests: `tests/test_handoff.sh`.
+
+## Live check after production deploys (auto-revert)
+**Add it to a repo (one workflow file plus one config file, no secret):**
+1. Copy `repo-snippet/.github/workflows/live-check.yml` to the repo's `.github/workflows/`, replace `OWNER`, and pin `REF` to an agent-kit commit SHA.
+2. Add `.livecheck.json` at the repo root (`repo-snippet/.livecheck.json` is the shape): the production `base_url` (the custom domain, not a `*.vercel.app` deployment URL, which deployment protection may block) and 3 to 6 paths. Give each a `status` (default 200, or a list) and an optional `contains` text. Assert at least one signed-out redirect or 401, so a broken auth gate fails the check.
+3. In the Actions tab, run **live-check** by hand once with `drill: revert`. It adds a path that must fail, then opens a revert PR (or an issue) labelled `live-check-drill` and closes it at once. Nothing is merged and production is not touched.
+
+**What it does on each Production `deployment_status` from Vercel:** it checks once after `settle_seconds` (default 15). A pass ends the run, so a healthy deploy costs about 20 seconds. A failure is re-checked twice, `retry_seconds` apart (default 75). If it still fails, `decide.sh` picks one of two outcomes:
+- **Revert** happens only when all of these hold: the commit is a squash-merge from a PR (agents can only squash), it is still the tip of the default branch, the PR has no `hold` or `gate:*` label, it touches no migration, auth, payments, env, legal or workflow path, the previous production live check passed, and the commit is not itself a revert. The revert PR (labelled `auto-revert`) is squash-merged without CI, because its tree is checked to be identical to the parent commit, the tree that was live and passing before. Vercel then deploys the revert, and the live check runs on it too.
+- **Issue** covers everything else, plus any revert that can't finish at some step: one open issue labelled `live-check-failed`, and later failures add comments to it.
+
+**For the weekly ledger:** each run writes one line to its job summary (`live-check | repo | sha | PASS/FAIL | action | reason`). Count real reverts with `is:pr label:auto-revert` and failures with `label:live-check-failed`. Drills carry `live-check-drill` instead, and so does the revert of a PR labelled `live-check-drill`.
+
+**Limits:** the check only sees HTTP status and page text, not runtime errors in logs. The repo setting "Allow GitHub Actions to create and approve pull requests" must be on, or every revert falls back to an issue (the drill shows which). Tests: `tests/test_live_check.sh`.
